@@ -31,4 +31,9 @@ are required and must be established in the run time env by the user:
 - GDAL/osgeo
 - geopy
 
+## Historical Tax Rates
+
+Historical data for county managed fire districts can be seen in the [Burke 2021 Revised Audit report][burkefdratehistory].
+
 [budget25_26]: https://www.burkenc.org/DocumentCenter/View/4471/FY-2025-2026-Approved-Budget-PDF#page=6
+[burkefdratehistory]: https://lgreports.nctreasurer.com/Reports/2021/County/Burke.pdf#page=111

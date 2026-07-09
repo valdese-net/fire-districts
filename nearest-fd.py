@@ -1,11 +1,6 @@
 from osgeo import ogr,osr
 from geopy.distance import geodesic
-import csv
-import sys
-
-fixupFD: dict[str, str] = {
-	'06361': '01277', # the ncone map is wrong, burke has no fire district with this id, it should be 01277
-}
+import csv, sys
 
 class FireDistrict:
 	def __init__(self, id: str, name: str):
@@ -31,7 +26,7 @@ class ParcelPoint:
 		self.NPARNO = l['NPARNO']
 		self.PARVAL = float(l['PARVAL']) if l['PARVAL'] and (l['PARVAL'] != 'None') else 0.0
 		self.FDID = l['FDID']
-		self.pt = (float(l['X']), float(l['Y']))
+		self.pt = (float(l['lat']), float(l['lng']))
 		self.FSID_Nearest = None
 		self.FSID_NearestInDistrict = None
 		self.Dist_Nearest = float('inf')
@@ -44,11 +39,10 @@ parcels: dict[str, ParcelPoint] = {}
 target_srs = osr.SpatialReference()
 target_srs.ImportFromEPSG(4326)
 
-with open('../data/burkefd.tsv', 'r') as file:
-	reader = csv.DictReader(file, delimiter="\t")
+with open('../data/burkefd.csv', 'r') as file:
+	reader = csv.DictReader(file)
 	for row in reader:
 		fdid = row['FDID']
-		if fdid in fixupFD: fdid = fixupFD[fdid]
 		fd[fdid] = FireDistrict(fdid, row['FDNAME'])
 
 stations = ogr.Open('/vsizip/../data/NC_Fire_Stations_7200722316549403871.zip/Fire_Stations.shp')
@@ -81,13 +75,9 @@ print(f"Loaded {len(fs)} fire stations from {len(fd)} fire departments.")
 
 # sys.exit()
 
-with open('../data/parcel2fd.tsv', 'r') as file:
-	reader = csv.DictReader(file, delimiter="\t")
+with open('../data/parcel2fd.csv', 'r') as file:
+	reader = csv.DictReader(file)
 	for row in reader:
-		fdid = row['FDID']
-		if fdid in fixupFD:
-			fdid = fixupFD[fdid]
-			row['FDID'] = fdid
 		parcels[row['NPARNO']] = ParcelPoint(row)
 
 parcelsWithCloserFS = 0
@@ -119,18 +109,21 @@ for parcel in parcels.values():
 			parcelFD.propertyValWithCloserFS += parcel.PARVAL
 
 print(f"\nProcessed {parcelCount} parcels. Found {parcelsWithCloserFS} parcels with closer fire stations than their own district.")
-with open("../data/burkefd2.tsv", "w") as out:
-	print(f"FDID\tFDNAME\tSTATIONS\tPARCELS\tPROPERTYVAL\tPARCELS_WITH_CLOSER_FS\tPROPERTYVAL_WITH_CLOSER_FS",file=out)
+with open("../data/burkefd2.csv", "w", newline='') as out:
+	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
+	writer.writerow(["FDID", "FDNAME", "STATIONS", "PARCELS", "PROPERTYVAL", "PARCELS_WITH_CLOSER_FS", "PROPERTYVAL_WITH_CLOSER_FS"])
 	for fdistrict in fd.values():
-		print(f"{fdistrict.FDID}\t{fdistrict.name}\t{len(fdistrict.stations)}\t{fdistrict.parcels}\t{fdistrict.propertyVal:.2f}\t{fdistrict.parcelsWithCloserFS}\t{fdistrict.propertyValWithCloserFS:.2f}",file=out)
+		writer.writerow([fdistrict.FDID, fdistrict.name, len(fdistrict.stations), fdistrict.parcels, f"{fdistrict.propertyVal:.2f}", fdistrict.parcelsWithCloserFS, f"{fdistrict.propertyValWithCloserFS:.2f}"])
 
-with open("../data/burkefirestations.tsv", "w") as out:
-	print(f"STATIONID\tFDID\tNAME\tNUM\tX\tY",file=out)
+with open("../data/burkefirestations.csv", "w", newline='') as out:
+	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
+	writer.writerow(["STATIONID", "FDID", "NAME", "NUM", "lat", "lng"])
 	for stationid, station in fs.items():
-		print(f"{stationid}\t{station.FDID}\t{station.name}\t{station.station_num}\t{station.pt[0]:.6f}\t{station.pt[1]:.6f}",file=out)
+		writer.writerow([stationid, station.FDID, station.name, station.station_num, f"{station.pt[0]:.6f}", f"{station.pt[1]:.6f}"])
 
-with open("../data/nearestfd.tsv", "w") as out:
-	print(f"NPARNO\tPARVAL\tFDID\tFSID_nearestindistrict\tD_nearestInDistrict\tFSID_nearest\tD_nearest\tDiff\tX\tY",file=out)
+with open("../data/nearestfd.csv", "w", newline='') as out:
+	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
+	writer.writerow(["NPARNO", "PARVAL", "FDID", "FSID_nearestindistrict", "D_nearestInDistrict", "FSID_nearest", "D_nearest", "Diff", "lat", "lng"])
 	for parcel in parcels.values():
 		diff = parcel.Dist_Nearest - parcel.Dist_NearestInDistrict
-		print(f"{parcel.NPARNO}\t{parcel.PARVAL}\t{parcel.FDID}\t{parcel.FSID_NearestInDistrict}\t{parcel.Dist_NearestInDistrict}\t{parcel.FSID_Nearest}\t{parcel.Dist_Nearest}\t{diff}\t{parcel.pt[0]:.6f}\t{parcel.pt[1]:.6f}",file=out)
+		writer.writerow([parcel.NPARNO, parcel.PARVAL, parcel.FDID, parcel.FSID_NearestInDistrict, parcel.Dist_NearestInDistrict, parcel.FSID_Nearest, parcel.Dist_Nearest, diff, f"{parcel.pt[0]:.6f}", f"{parcel.pt[1]:.6f}"])

@@ -1,30 +1,38 @@
 from osgeo import ogr,osr
 import debug
+import os, csv
+
+src_datafolder = "../data"
+src_firedistricts_shapefile = f"{src_datafolder}/ncfd.shape.zip"
+src_burkefd_geojson = f"{src_datafolder}/fd-burke.geojson.gz"
+src_parcelcentroids_shapefile = f"{src_datafolder}/parcels/burke-parcels-04-20-2026.zip/nc_burke_parcels_pt.shp"
+
+if not os.path.exists(src_burkefd_geojson):
+	print(f"Generating {src_burkefd_geojson} from {src_firedistricts_shapefile}")
+	# create a geojson of the Burke County Fire Districts, fixing the FDID for the one that we know is wrong
+	# the data is missing fire district Carbon City, has wrong FDID for one of the districts, and is old, but it is what the state is providing
+	os.system(f"ogr2ogr -makevalid -where \"fdcounty='Burke' and FDID LIKE '%'\" -f GeoJSON -t_srs EPSG:4326 /vsigzip/./_fd.gz /vsizip/{src_firedistricts_shapefile} NC_Fire_Districts")
+	# FD '06361' => '01277': the ncone map is wrong, burke has no fire district with fdid 06361, it should be 01277
+	os.system(f"zcat ./_fd.gz | sed 's/\"FDID\": \"06361\"/\"FDID\": \"01277\"/' |  gzip -c > {src_burkefd_geojson}")
+	os.system(f"rm ./_fd.gz")
 
 target_srs = osr.SpatialReference()
 target_srs.ImportFromEPSG(4326)
 
-burke = ogr.Open('../data/burke-boundary.geojson')
-burkeLayer = burke.GetLayer()
-burkeFeature = burkeLayer.GetFeature(0)
-burkeGeomoetry = burkeFeature.GetGeometryRef()
-burkeGeomoetry.Transform(osr.CoordinateTransformation(burkeLayer.GetSpatialRef(), target_srs))
-
-parcelPts = ogr.Open('/vsizip/../data/parcels/burke-parcels-04-20-2026.zip/nc_burke_parcels_pt.shp')
+parcelPts = ogr.Open(f'/vsizip/{src_parcelcentroids_shapefile}')
 parcelptLayer = parcelPts.GetLayer()
 xparcelpt = osr.CoordinateTransformation(parcelptLayer.GetSpatialRef(), target_srs)
 
-fdShapes = ogr.Open('/vsizip/../data/ncfd-fixed.shape.zip')
+fdShapes = ogr.Open(f'/vsigzip/{src_burkefd_geojson}')
 fdLayer = fdShapes.GetLayer()
 xfd = osr.CoordinateTransformation(fdLayer.GetSpatialRef(), target_srs)
 
 class ParcelPoint:
 	__slots__ = ['id', 'val', 'pt', 'fd']
-	def __init__(self, l: ogr.Feature, p: ogr.Geometry):
+	def __init__(self, l: ogr.Feature, p: tuple[float, float]):
 		self.id = l.GetField('NPARNO')
-		self.val = l.GetField('PARVAL')
-		
-		self.pt = p.ExportToWkb()
+		self.val = float(l.GetField('PARVAL')) if l.GetField('PARVAL') else 0.0
+		self.pt = p
 		self.fd = None
 
 class FireDistrict:
@@ -40,7 +48,8 @@ for ppt in parcelptLayer:
 	pt = ppt.GetGeometryRef()
 	if not pt or not pt.IsValid(): continue
 	pt.Transform(xparcelpt)
-	newparcel = ParcelPoint(ppt, pt)
+	# latlng = (pt.GetX(), pt.GetY())
+	newparcel = ParcelPoint(ppt, (pt.GetX(), pt.GetY()))
 	parcels[newparcel.id] = newparcel
 
 for fd in fdLayer:
@@ -55,14 +64,8 @@ for fd in fdLayer:
 		debug.print_geometry_stats(geo)
 		continue  # Skip if geometry is missing
 
-	geo.Transform(xfd)
-
-	if not geo.Intersects(burkeGeomoetry):
-		print(f'Skipping {fd_id}: {fd_name} does not intersect burke')
-		continue
-
 	print(f'Processing {fd_id}:{fd_name}')
-	
+	geo.Transform(xfd)
 	if fd_id in firedistricts:
 		firedistrict = firedistricts[fd_id]
 	else:
@@ -72,7 +75,9 @@ for fd in fdLayer:
 	for parcel in parcels.values():
 		if parcel.fd is not None: continue
 
-		pt = ogr.CreateGeometryFromWkb(parcel.pt)
+		pt = ogr.Geometry(ogr.wkbPoint)
+		pt.AddPoint(parcel.pt[0], parcel.pt[1])
+
 		#if geo.Intersects(pt):
 		if geo.Contains(pt):
 			if parcel.fd is None:
@@ -84,14 +89,14 @@ for fd in fdLayer:
 firedistricts = dict(sorted(firedistricts.items()))
 parcels = dict(sorted(parcels.items()))
 
-with open("../data/burkefd.tsv", "w") as out:
-	print(f"FDID\tFDNAME",file=out)
+with open(f"{src_datafolder}/burkefd.csv", "w", newline='') as out:
+	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
+	writer.writerow(["FDID", "FDNAME"])
 	for fd_id, firedistrict in firedistricts.items():
-		if len(firedistrict.parcels) == 0: continue
-		print(f"{fd_id}\t{firedistrict.name}",file=out)
+		writer.writerow([fd_id, firedistrict.name])
 
-with open("../data/parcel2fd.tsv", "w") as out:
-	print(f"NPARNO\tPARVAL\tFDID\tX\tY",file=out)
+with open(f"{src_datafolder}/parcel2fd.csv", "w", newline='') as out:
+	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
+	writer.writerow(["NPARNO", "PARVAL", "FDID", "lat", "lng"])
 	for parcel in parcels.values():
-		pt = ogr.CreateGeometryFromWkb(parcel.pt)
-		print(f"{parcel.id}\t{parcel.val}\t{parcel.fd}\t{pt.GetX():.6f}\t{pt.GetY():.6f}",file=out)
+		writer.writerow([parcel.id, parcel.val, parcel.fd, f"{parcel.pt[0]:.6f}", f"{parcel.pt[1]:.6f}"])
