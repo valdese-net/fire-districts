@@ -1,0 +1,29 @@
+# Fire Districts (vintage 2026-05-20)
+
+## Summary
+
+| Name | Stations | Parcels | Prop Value | Parcels with Closer Station | Prop Value |
+| --- | --- | --- | --- | --- | --- |
+| Brendletown Fire Protection and Rescue Association, Inc. | 2 | 3.1K | $391M | 513 | $104M |
+| Chesterfield Fire and Rescue Protection Association, Inc. | 1 | 2.18K | $219M | 178 | $25M |
+| Drexel Fire Department | 1 | 877 | $148M | 152 | $35.7M |
+| Drowning Creek Volunteer Fire Department, Inc. | 1 | 778 | $78.5M | 214 | $17.6M |
+| Enola Volunteer Fire Rescue | 1 | 1.4K | $132M | 150 | $10M |
+| George Hildebran Fire and Rescue Department Inc. | 1 | 3.3K | $321M | 545 | $52.6M |
+| Glen Alpine Volunteer Fire Department | 1 | 1.47K | $193M | 312 | $35M |
+| Hickory Fire Department | 7 | 32 | $15.5M | 0 | $0 |
+| Icard Township Fire Rescue, Inc. | 2 | 5.63K | $723M | 1.21K | $135M |
+| Jonas Ridge Volunteer Fire & Rescue Department, Inc. | 1 | 1.41K | $183M | 0 | $0 |
+| Lake James Fire and Rescue, Inc. | 1 | 1.72K | $584M | 347 | $47.7M |
+| Long View Fire Department | 1 | 438 | $52.9M | 288 | $38.1M |
+| Longtown Volunteer Fire Department, Inc. | 1 | 541 | $211M | 52 | $51.6M |
+| Lovelady Volunteer Fire & Rescue Department, Incorporated | 2 | 4.5K | $690M | 1.51K | $238M |
+| Morganton Department Of Public Safety | 3 | 7.84K | $1.92B | 878 | $224M |
+| North Catawba Fire-Rescue Department, Inc. | 1 | 216 | $34.3M | 169 | $29.4M |
+| Oak Hill Fire and Rescue Protection Association, Inc. | 3 | 4.4K | $581M | 886 | $140M |
+| Rhodhiss Fire Department | 1 | 426 | $37.6M | 135 | $11.1M |
+| Salem Community Fire and Rescue Protection Association, Inc | 2 | 4.82K | $625M | 740 | $85.8M |
+| South Mountains Fire Rescue, Inc. | 1 | 2.45K | $92.7M | 2 | $89.2K |
+| Triple Community Fire Department, Inc. | 1 | 4.37K | $585M | 2.08K | $260M |
+| Valdese Fire Department | 1 | 2.97K | $484M | 573 | $94.4M |
+| West End Fire and Rescue, Inc. | 3 | 3.12K | $493M | 252 | $24M |

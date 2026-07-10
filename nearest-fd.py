@@ -1,36 +1,8 @@
 from osgeo import ogr,osr
 from geopy.distance import geodesic
-import csv, sys
-
-class FireDistrict:
-	def __init__(self, id: str, name: str):
-		self.FDID = id
-		self.name = name
-		self.stations = []
-		self.parcels = 0
-		self.parcelsWithCloserFS = 0
-		self.propertyVal = 0.0
-		self.propertyValWithCloserFS = 0.0
-
-class FireStation:
-	def __init__(self, id, name, fdid, station_num, pt):
-		self.FSID = id
-		self.name = name
-		self.FDID = fdid
-		self.station_num = station_num
-		self.pt = pt
-
-class ParcelPoint:
-	__slots__ = ['NPARNO', 'PARVAL', 'FDID', 'pt', 'FSID_Nearest', 'FSID_NearestInDistrict', 'Dist_Nearest', 'Dist_NearestInDistrict']
-	def __init__(self, l):
-		self.NPARNO = l['NPARNO']
-		self.PARVAL = float(l['PARVAL']) if l['PARVAL'] and (l['PARVAL'] != 'None') else 0.0
-		self.FDID = l['FDID']
-		self.pt = (float(l['lat']), float(l['lng']))
-		self.FSID_Nearest = None
-		self.FSID_NearestInDistrict = None
-		self.Dist_Nearest = float('inf')
-		self.Dist_NearestInDistrict = float('inf')
+import csv, os, sys
+import lib.config as config
+from lib.fdtypes import FireDistrict, FireStation, ParcelPoint
 
 fd: dict[str, FireDistrict] = {}
 fs: dict[str, FireStation] = {}
@@ -39,13 +11,13 @@ parcels: dict[str, ParcelPoint] = {}
 target_srs = osr.SpatialReference()
 target_srs.ImportFromEPSG(4326)
 
-with open('../data/burkefd.csv', 'r') as file:
+with open(f"{config.src_datafolder}/burkefd.csv", 'r') as file:
 	reader = csv.DictReader(file)
 	for row in reader:
 		fdid = row['FDID']
 		fd[fdid] = FireDistrict(fdid, row['FDNAME'])
 
-stations = ogr.Open('/vsizip/../data/NC_Fire_Stations_7200722316549403871.zip/Fire_Stations.shp')
+stations = ogr.Open(f"/vsizip/{config.src_datafolder}/NC_Fire_Stations_7200722316549403871.zip/Fire_Stations.shp")
 stationLayer = stations.GetLayer()
 xstation = osr.CoordinateTransformation(stationLayer.GetSpatialRef(), target_srs)
 
@@ -75,7 +47,7 @@ print(f"Loaded {len(fs)} fire stations from {len(fd)} fire departments.")
 
 # sys.exit()
 
-with open('../data/parcel2fd.csv', 'r') as file:
+with open(config.src_datafolder+'/parcel2fd.csv', 'r') as file:
 	reader = csv.DictReader(file)
 	for row in reader:
 		parcels[row['NPARNO']] = ParcelPoint(row)
@@ -109,19 +81,19 @@ for parcel in parcels.values():
 			parcelFD.propertyValWithCloserFS += parcel.PARVAL
 
 print(f"\nProcessed {parcelCount} parcels. Found {parcelsWithCloserFS} parcels with closer fire stations than their own district.")
-with open("../data/burkefd2.csv", "w", newline='') as out:
+with open(f"{config.src_datafolder}/burkefd2.csv", "w", newline='') as out:
 	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
 	writer.writerow(["FDID", "FDNAME", "STATIONS", "PARCELS", "PROPERTYVAL", "PARCELS_WITH_CLOSER_FS", "PROPERTYVAL_WITH_CLOSER_FS"])
 	for fdistrict in fd.values():
 		writer.writerow([fdistrict.FDID, fdistrict.name, len(fdistrict.stations), fdistrict.parcels, f"{fdistrict.propertyVal:.2f}", fdistrict.parcelsWithCloserFS, f"{fdistrict.propertyValWithCloserFS:.2f}"])
 
-with open("../data/burkefirestations.csv", "w", newline='') as out:
+with open(f"{config.src_datafolder}/burkefirestations.csv", "w", newline='') as out:
 	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
 	writer.writerow(["STATIONID", "FDID", "NAME", "NUM", "lat", "lng"])
 	for stationid, station in fs.items():
 		writer.writerow([stationid, station.FDID, station.name, station.station_num, f"{station.pt[0]:.6f}", f"{station.pt[1]:.6f}"])
 
-with open("../data/nearestfd.csv", "w", newline='') as out:
+with open(f"{config.src_datafolder}/nearestfd.csv", "w", newline='') as out:
 	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
 	writer.writerow(["NPARNO", "PARVAL", "FDID", "FSID_nearestindistrict", "D_nearestInDistrict", "FSID_nearest", "D_nearest", "Diff", "lat", "lng"])
 	for parcel in parcels.values():

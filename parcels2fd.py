@@ -1,29 +1,25 @@
 from osgeo import ogr,osr
-import debug
+import lib.debug as debug
 import os, csv
+import lib.config as config
 
-src_datafolder = "../data"
-src_firedistricts_shapefile = f"{src_datafolder}/ncfd.shape.zip"
-src_burkefd_geojson = f"{src_datafolder}/fd-burke.geojson.gz"
-src_parcelcentroids_shapefile = f"{src_datafolder}/parcels/burke-parcels-04-20-2026.zip/nc_burke_parcels_pt.shp"
-
-if not os.path.exists(src_burkefd_geojson):
-	print(f"Generating {src_burkefd_geojson} from {src_firedistricts_shapefile}")
+if not os.path.exists(config.src_burkefd_geojson):
+	print(f"Generating {config.src_burkefd_geojson} from {config.src_firedistricts_shapefile}")
 	# create a geojson of the Burke County Fire Districts, fixing the FDID for the one that we know is wrong
 	# the data is missing fire district Carbon City, has wrong FDID for one of the districts, and is old, but it is what the state is providing
-	os.system(f"ogr2ogr -makevalid -where \"fdcounty='Burke' and FDID LIKE '%'\" -f GeoJSON -t_srs EPSG:4326 /vsigzip/./_fd.gz /vsizip/{src_firedistricts_shapefile} NC_Fire_Districts")
+	os.system(f"ogr2ogr -makevalid -where \"fdcounty='Burke' and FDID LIKE '%'\" -f GeoJSON -t_srs EPSG:4326 /vsigzip/./_fd.gz /vsizip/{config.src_firedistricts_shapefile} NC_Fire_Districts")
 	# FD '06361' => '01277': the ncone map is wrong, burke has no fire district with fdid 06361, it should be 01277
-	os.system(f"zcat ./_fd.gz | sed 's/\"FDID\": \"06361\"/\"FDID\": \"01277\"/' |  gzip -c > {src_burkefd_geojson}")
+	os.system(f"zcat ./_fd.gz | sed 's/\"FDID\": \"06361\"/\"FDID\": \"01277\"/' |  gzip -c > {config.src_burkefd_geojson}")
 	os.system(f"rm ./_fd.gz")
 
 target_srs = osr.SpatialReference()
 target_srs.ImportFromEPSG(4326)
 
-parcelPts = ogr.Open(f'/vsizip/{src_parcelcentroids_shapefile}')
+parcelPts = ogr.Open(f'/vsizip/{config.src_parcelcentroids_shapefile}')
 parcelptLayer = parcelPts.GetLayer()
 xparcelpt = osr.CoordinateTransformation(parcelptLayer.GetSpatialRef(), target_srs)
 
-fdShapes = ogr.Open(f'/vsigzip/{src_burkefd_geojson}')
+fdShapes = ogr.Open(f'/vsigzip/{config.src_burkefd_geojson}')
 fdLayer = fdShapes.GetLayer()
 xfd = osr.CoordinateTransformation(fdLayer.GetSpatialRef(), target_srs)
 
@@ -89,13 +85,13 @@ for fd in fdLayer:
 firedistricts = dict(sorted(firedistricts.items()))
 parcels = dict(sorted(parcels.items()))
 
-with open(f"{src_datafolder}/burkefd.csv", "w", newline='') as out:
+with open(f"{config.src_datafolder}/burkefd.csv", "w", newline='') as out:
 	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
 	writer.writerow(["FDID", "FDNAME"])
 	for fd_id, firedistrict in firedistricts.items():
 		writer.writerow([fd_id, firedistrict.name])
 
-with open(f"{src_datafolder}/parcel2fd.csv", "w", newline='') as out:
+with open(f"{config.src_datafolder}/parcel2fd.csv", "w", newline='') as out:
 	writer = csv.writer(out, quoting=csv.QUOTE_MINIMAL)
 	writer.writerow(["NPARNO", "PARVAL", "FDID", "lat", "lng"])
 	for parcel in parcels.values():
