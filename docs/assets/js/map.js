@@ -58,4 +58,20 @@ function InitBurkeFDProximityMap(src) {
 		center: [-81.65983,35.71655],
 		zoom: 10
 	});
+
+	map.on('click', function(e) {
+		const bbox = [[e.point.x - 1, e.point.y - 1], [e.point.x + 1, e.point.y + 1]];
+		const features = map.queryRenderedFeatures(bbox);
+		if (!features.length) return;
+
+		const d = [];
+		features.forEach((feature) => {
+            d.unshift(`<p>${feature.layer.id}<br>${JSON.stringify(feature.properties, null, 2)}</p>`);
+		});
+
+		new maplibregl.Popup()
+			.setLngLat(e.lngLat)
+			.setHTML('<div style="max-height:50vh;overflow:auto">'+d.join('')+'</div>')
+			.addTo(map);
+	});
 }
