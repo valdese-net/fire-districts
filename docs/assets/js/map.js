@@ -1,4 +1,4 @@
-function InitBurkeFDMap(src) {
+function InitBurkeFDProximityMap(src) {
 	const protocol = new pmtiles.Protocol();
 	maplibregl.addProtocol("pmtiles", protocol.tile);
 	const PMTILES_URL = src; 
@@ -35,27 +35,23 @@ function InitBurkeFDMap(src) {
 					"paint": { "fill-color": "#888", "fill-opacity":0.4, "fill-outline-color": "white" }
 				},
 				{
+					"id": "parcel",
+					"type": "circle",
+					"source": "fd",
+					"source-layer": "parcels",
+					"paint": {"circle-color": ["case",
+						["==",["get","FSID_nearestindistrict"],["get","FSID_nearest"]], "green",
+						["<",["length", ["get", "FDID"]],1], "#66a",
+						["!=",["get","FSID_nearestindistrict"],["get","FSID_nearest"]], "red",
+						"white"]
+					}
+				},
+				{
 					"id": "station",
 					"type": "circle",
 					"source": "fd",
 					"source-layer": "firestations",
 					"paint": { "circle-color": "yellow" }
-				},
-				{
-					"id": "goodparcel",
-					"type": "circle",
-					"source": "fd",
-					"source-layer": "parcels",
-					"filter": ["==",["get","FSID_nearestindistrict"],["get","FSID_nearest"]],
-					"paint": { "circle-color": "green" }
-				},
-				{
-					"id": "badparcel",
-					"type": "circle",
-					"source": "fd",
-					"source-layer": "parcels",
-					"filter": ["!=",["get","FSID_nearestindistrict"],["get","FSID_nearest"]],
-					"paint": { "circle-color": "red" }
 				},
 			]
 		},

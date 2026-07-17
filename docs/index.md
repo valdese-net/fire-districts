@@ -1,8 +1,12 @@
 ---
-layout: default
 ---
 
-# Fire Districts (vintage 2026-05-20)
+# Burke Fire Districts (vintage {{- site.data.fdenv.version -}})
+
+## Online Maps
+
+[Proximity Map][proxmap]: A proximity map showing color coded parcel centroids, with red indicating parcels whose
+closest fire station is outside of its encompassing fire district.
 
 ## Summary
 
@@ -11,3 +15,5 @@ layout: default
 </style>
 
 {% include datatable.html data=site.data.burkefd %}
+
+[proxmap]: proximitymap.html
